@@ -8,9 +8,7 @@ const server = http.createServer((req, res) => {
 });
 
 const wss = new WebSocket.Server({ server });
-const clients = new Map(); // ws -> { id, connectedAt }
-
-let lastSubmitEvent = null; // Track last submit to prevent duplicates
+const clients = new Map();
 
 wss.on('connection', (ws) => {
   const id = Math.random().toString(36).slice(2, 8);
@@ -28,26 +26,15 @@ wss.on('connection', (ws) => {
       const msg = JSON.parse(raw);
 
       if (msg.type === 'SLOT_SUBMITTED') {
-        // A browser found an open slot and clicked submit
-        // Broadcast to ALL others so they know not to click
-        const now = Date.now();
-
-        // Prevent duplicate broadcasts within 2 seconds
-        if (lastSubmitEvent && now - lastSubmitEvent.ts < 2000) {
-          ws.send(JSON.stringify({ type: 'DUPLICATE', msg: 'Already submitted within 2s' }));
-          return;
-        }
-
-        lastSubmitEvent = { browserId: msg.browserId || id, ts: now, slot: msg.slot || '' };
         console.log(`[SUBMIT] Browser ${id} clicked submit. Slot: ${msg.slot || '?'}`);
 
-        // Tell all OTHER browsers: someone already submitted, don't click
+        // Tell ALL browsers (including sender) to click submit
         broadcast({
-          type: 'SUBMIT_LOCK',
+          type: 'CLICK_SUBMIT_NOW',
           submittedBy: id,
           slot: msg.slot || '',
-          ts: now
-        }, ws); // exclude sender
+          ts: Date.now()
+        }); // No exclude — everyone clicks
       }
 
       if (msg.type === 'PING') {
