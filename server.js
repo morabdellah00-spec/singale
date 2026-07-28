@@ -28,13 +28,13 @@ wss.on('connection', (ws) => {
       if (msg.type === 'SLOT_SUBMITTED') {
         console.log(`[SUBMIT] Browser ${id} clicked submit. Slot: ${msg.slot || '?'}`);
 
-        // Tell ALL browsers (including sender) to click submit
+        // Tell all OTHER browsers to click submit (NOT the sender)
         broadcast({
           type: 'CLICK_SUBMIT_NOW',
           submittedBy: id,
           slot: msg.slot || '',
           ts: Date.now()
-        }); // No exclude — everyone clicks
+        }, ws); // EXCLUDE sender — sender is the NEW browser, shouldn't click
       }
 
       if (msg.type === 'PING') {
